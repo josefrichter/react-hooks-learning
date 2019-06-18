@@ -1,5 +1,6 @@
 import React, { useState, useReducer } from "react";
 import uuid from "uuid";
+import { tsTypeAliasDeclaration } from "@babel/types";
 
 const initialTodos = [
   {
@@ -21,31 +22,49 @@ const initialTodos = [
 
 const App = () => {
   const [task, setTask] = useState("");
-  const [todos, setTodos] = useState(initialTodos);
+  // const [todos, setTodos] = useState(initialTodos);
 
   const handleChangeInput = event => {
     setTask(event.target.value);
   };
 
-  const handleSubmit = e => {
+  // const handleSubmit = e => {
+  //   if (task) {
+  //     setTodos(todos.concat({ id: uuid(), task, complete: false }));
+  //   }
+  //   setTask("");
+  //   e.preventDefault();
+  // };
+
+  const handleSubmit = event => {
     if (task) {
-      setTodos(todos.concat({ id: uuid(), task, complete: false }));
+      dispatchTodos({
+        type: "ADD_TODO",
+        task,
+        id: uuid()
+      });
     }
     setTask("");
-    e.preventDefault();
+    event.preventDefault();
   };
 
-  const handleChangeCheckbox = id => {
-    setTodos(
-      todos.map(todo => {
-        if (todo.id === id) {
-          return { ...todo, complete: !todo.complete };
-        } else {
-          return todo;
-        }
-      })
-    );
-    // console.log(todos);
+  // const handleChangeCheckbox = id => {
+  //   setTodos(
+  //     todos.map(todo => {
+  //       if (todo.id === id) {
+  //         return { ...todo, complete: !todo.complete };
+  //       } else {
+  //         return todo;
+  //       }
+  //     })
+  //   );
+  // };
+
+  const handleChangeCheckbox = todo => {
+    dispatchTodos({
+      type: todo.complete ? "UNDO_TODO" : "DO_TODO",
+      id: todo.id
+    });
   };
 
   const handleShowAll = () => {
@@ -61,7 +80,7 @@ const App = () => {
   };
 
   // The reducer function computes the new state. Often the current state from the reducer function’s argument is used to compute the new state with the incoming action. But in this simpler example, we only transition from one JavaScript string to another string as state.
-  const reducer = (state, action) => {
+  const filterReducer = (state, action) => {
     switch (action.type) {
       case "SHOW_ALL":
         return "ALL";
@@ -74,7 +93,38 @@ const App = () => {
     }
   };
 
-  const [filter, dispatchFilter] = useReducer(reducer, "ALL");
+  const [filter, dispatchFilter] = useReducer(filterReducer, "ALL");
+
+  const todoReducer = (state, action) => {
+    switch (action.type) {
+      case "DO_TODO":
+        return state.map(todo => {
+          if (todo.id === action.id) {
+            return { ...todo, complete: true };
+          } else {
+            return todo;
+          }
+        });
+      case "UNDO_TODO":
+        return state.map(todo => {
+          if (todo.id === action.id) {
+            return { ...todo, complete: false };
+          } else {
+            return todo;
+          }
+        });
+      case "ADD_TODO":
+        return state.concat({
+          task: action.task,
+          id: action.id,
+          complete: false
+        });
+      default:
+        throw new Error();
+    }
+  };
+
+  const [todos, dispatchTodos] = useReducer(todoReducer, initialTodos);
 
   const filteredTodos = todos.filter(todo => {
     if (filter === "ALL") {
@@ -109,7 +159,7 @@ const App = () => {
             <input
               type="checkbox"
               checked={todo.complete}
-              onChange={() => handleChangeCheckbox(todo.id)}
+              onChange={() => handleChangeCheckbox(todo)}
             />
           </li>
         ))}
