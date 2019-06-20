@@ -1,8 +1,11 @@
+// based on https://www.robinwieruch.de/react-state-usereducer-usestate-usecontext/
 import React, { useState, useReducer, createContext, useContext } from "react";
 import uuid from "uuid/v4";
 
+// here I initialize a context with no initial value
 const TodoContext = createContext(null);
 
+// this is dummy data
 const initalTodos = [
   {
     id: uuid(),
@@ -21,6 +24,9 @@ const initalTodos = [
   }
 ];
 
+// reducer for filtering ToDos
+// this is a dumb one that just "translates" action type to a string
+// but it does NOT modify the state at all, which is usually the point of reducers
 const filterReducer = (state, action) => {
   switch (action.type) {
     case "SHOW_ALL":
@@ -34,6 +40,8 @@ const filterReducer = (state, action) => {
   }
 };
 
+// this is a typical reducer
+// it receives a state and action, performs that action and returns new state
 const todoReducer = (state, action) => {
   switch (action.type) {
     case "DO_TODO":
@@ -53,6 +61,7 @@ const todoReducer = (state, action) => {
         }
       });
     case "ADD_TODO":
+      // Array concat appends new items to array and returns NEW array
       return state.concat({
         task: action.task,
         id: uuid(),
@@ -64,9 +73,12 @@ const todoReducer = (state, action) => {
 };
 
 const App = () => {
+  // the useReducer hook basically holds the state, kinda like useState
+  // const [state, modifyState] = useState(defaultValue)
   const [filter, dispatchFilter] = useReducer(filterReducer, "ALL");
   const [todos, dispatchTodos] = useReducer(todoReducer, initalTodos);
 
+  // not 100% sure how this one triggers re-rendering??
   const filteredTodos = todos.filter(todo => {
     if (filter === "ALL") {
       return true;
@@ -84,6 +96,9 @@ const App = () => {
   });
 
   return (
+    // replaced the wrapper <div> with the Provider
+    // so that no nested component needs to receive dispatch={dispatchTodos}
+    // instead we can use it in any component via useContext
     <TodoContext.Provider value={dispatchTodos}>
       <Filter dispatch={dispatchFilter} />
       <TodoList todos={filteredTodos} />
@@ -92,6 +107,8 @@ const App = () => {
   );
 };
 
+// Filter components receives the dispatchFilter function
+// via the dispatch prop
 const Filter = ({ dispatch }) => {
   const handleShowAll = () => {
     dispatch({ type: "SHOW_ALL" });
@@ -128,6 +145,10 @@ const TodoList = ({ todos }) => (
   </ul>
 );
 
+// on the other hand, TodoItem component doesn't receive the dispatchTodos function via props
+// but instead directly via useContext
+// As a benefit, the dispatch prop doesn't need to pass through the parent TodoList component
+// which it initially did using dispatch={dispatch} prop (aka. prop drilling)
 const TodoItem = ({ todo }) => {
   const dispatch = useContext(TodoContext);
   const handleChange = () =>
@@ -150,6 +171,8 @@ const TodoItem = ({ todo }) => {
   );
 };
 
+// AddTodo uses useState to keep input field content as its state
+// Once submitted, it dispatches this state with ADD_TODO action to the todoReducer
 const AddTodo = () => {
   const [task, setTask] = useState("");
   const dispatch = useContext(TodoContext);
